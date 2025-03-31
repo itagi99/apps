@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bill Receipt System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #e3e8f8, #f8e3e8);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 80mm;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            padding: 10px;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+
+        .container:hover {
+            transform: translateY(-5px);
+        }
+
+        .tab {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+
+        .tab button {
+            padding: 8px 15px;
+            border: none;
+            background: linear-gradient(45deg, #4a90e2, #357abd);
+            color: white;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .tab button:hover {
+            background: linear-gradient(45deg, #357abd, #4a90e2);
+            box-shadow: 0 4px 15px rgba(74, 144, 226, 0.4);
+        }
+
+        .tab button.active {
+            background: linear-gradient(45deg, #2a6db0, #3d85c6);
+            transform: scale(1.05);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        h2, h3, h4 {
+            color: #2c3e50;
+            margin: 5px 0;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        p {
+            margin: 3px 0;
+            color: #7f8c8d;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        input {
+            width: 70%;
+            padding: 6px;
+            margin: 3px 0;
+            border: 2px solid #ecf0f1;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            border-color: #4a90e2;
+            outline: none;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 5px 0;
+            font-size: 10px;
+            background: #fff;
+        }
+
+        th, td {
+            border: 1px solid #ecf0f1;
+            padding: 4px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        th {
+            background: #f5f7fa;
+            color: #2c3e50;
+        }
+
+        .remove-btn, .edit-btn {
+            cursor: pointer;
+            transition: transform 0.2s;
+            font-size: 10px;
+        }
+
+        .remove-btn {
+            color: #e74c3c;
+        }
+
+        .remove-btn:hover {
+            transform: scale(1.2);
+        }
+
+        .edit-btn {
+            color: #3498db;
+            margin-left: 5px;
+        }
+
+        .edit-btn:hover {
+            transform: scale(1.2);
+        }
+
+        button {
+            padding: 6px 12px;
+            margin: 3px 2px;
+            border: none;
+            border-radius: 15px;
+            background: linear-gradient(45deg, #4a90e2, #357abd);
+            color: white;
+            font-size: 11px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: linear-gradient(45deg, #357abd, #4a90e2);
+            box-shadow: 0 4px 15px rgba(74, 144, 226, 0.4);
+        }
+
+        #qr-container, #qr-container-main {
+            margin: 5px auto;
+            width: 100px;
+            display: flex;
+            justify-content: center;
+        }
+
+        #popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+        }
+
+        #popup h3 {
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        #popup input {
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 11px;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            body * { 
+                visibility: hidden; 
+            }
+            #bill.print-active, #bill.print-active *, 
+            #receipt-content.print-active, #receipt-content.print-active * { 
+                visibility: visible; 
+            }
+            .print-active {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 80mm;
+                padding: 5px;
+                margin: 0;
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 10px;
+                color: black !important;
+                font-weight: bold !important;
+            }
+            .print-active h2, .print-active h3, .print-active h4 {
+                color: black !important;
+                font-weight: bold !important;
+                margin: 3px 0;
+            }
+            .print-active p {
+                color: black !important;
+                font-weight: bold !important;
+                margin: 2px 0;
+            }
+            .print-active table {
+                font-size: 10px;
+                border-collapse: collapse;
+            }
+            .print-active th, .print-active td {
+                border: 1px solid black;
+                padding: 3px;
+                color: black !important;
+                font-weight: bold !important;
+            }
+            .print-active th {
+                background: white;
+            }
+            button, .remove-btn, .edit-btn, .action-column, .tab { 
+                display: none !important; 
+            }
+            #qr-container, #qr-container-main {
+                margin: 5px auto;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="tab">
+        <button class="tablinks active" onclick="openTab('Calculator')">Calculator Mode</button>
+        <button class="tablinks" onclick="openTab('Main')">Main Mode</button>
+    </div>
+
+    <div id="Calculator" class="tab-content active">
+        <h2>Annapurna Stores</h2>
+        <div id="bill">
+            <h3>Annapurna Stores</h3>
+            <table>
+                <tr>
+                    <th>Sl No</th>
+                    <th>Qty</th>
+                    <th>Rate</th>
+                    <th>Total</th>
+                    <th class="action-column">Action</th>
+                </tr>
+                <tbody id="billItems"></tbody>
+            </table>
+            <h4>Grand Total: ₹<span id="grandTotal">0.00</span></h4>
+            <p>Cash Received: ₹<input type="number" id="cashReceived" oninput="calculateBalance()"></p>
+            <p>Balance: ₹<span id="balance">0.00</span></p>
+            <div id="qr-container">
+                <div id="qrcode"></div>
+            </div>
+        </div>
+        <button onclick="printBill()">Print Bill (Ctrl + P)</button>
+        <button onclick="saveBill()">Save Bill</button>
+        <button onclick="loadBill()">Load Bill</button>
+        <button onclick="clearSavedBill()">Clear Saved Bill</button>
+    </div>
+
+    <div id="Main" class="tab-content">
+        <div id="receipt-content">
+            <h2>ANNAPURNA STORES</h2>
+            <p>Customer: <input type="text" id="customerName" placeholder="Optional"></p>
+            <table id="billTable">
+                <thead>
+                    <tr>
+                        <th>Sl No</th>
+                        <th>Item Name</th>
+                        <th>Qty</th>
+                        <th>Rate</th>
+                        <th>Total</th>
+                        <th class="action-column">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="billBody"></tbody>
+            </table>
+            <h3>Grand Total: ₹ <span id="grandTotalMain">0.00</span></h3>
+            <p>Cash Received: ₹ <input type="number" id="cashReceivedMain" oninput="calculateBalanceMain()"></p>
+            <p>Balance: ₹ <span id="balanceMain">0.00</span></p>
+            <div id="qr-container-main">
+                <div id="qrcodeMain"></div>
+            </div>
+        </div>
+        <button onclick="resetBillMain()">Reset Bill (F3)</button>
+        <button onclick="printReceiptMain()">Print Bill (Ctrl + P)</button>
+        <button onclick="saveBillAsImageMain()">Save Bill as Image</button>
+        <button onclick="shareBillMain()">Share Bill</button>
+        <button onclick="saveBillMain()">Save Bill</button>
+        <button onclick="loadBillMain()">Load Bill</button>
+        <button onclick="clearSavedBillMain()">Clear Saved Bill</button>
+    </div>
+</div>
+
+<div id="popup">
+    <h3>Add/Edit Item</h3>
+    <div id="calculatorPopup">
+        <input type="number" id="popupQuantity" placeholder="Quantity">
+        <input type="number" id="popupRate" placeholder="Rate">
+    </div>
+    <div id="mainPopup" style="display: none;">
+        <input type="text" id="productName" placeholder="Item Name (Optional)">
+        <input type="number" id="quantity" placeholder="Quantity">
+        <input type="number" id="rate" placeholder="Rate">
+    </div>
+    <button onclick="saveItem()">Save</button>
+    <button onclick="closePopup()">Close</button>
+</div>
+
+<script>
+    let currentMode = 'Calculator';
+    let grandTotal = 0, itemCount = 0, editingRow = null;
+    let grandTotalMain = 0;
+
+    function openTab(tabName) {
+        currentMode = tabName;
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        document.querySelectorAll('.tablinks').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(tabName).classList.add('active');
+        document.querySelector(`.tablinks[onclick="openTab('${tabName}')"]`).classList.add('active');
+    }
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            e.preventDefault();
+            openPopup();
+            if (currentMode === "Calculator" && !editingRow) {
+                document.getElementById("popupQuantity").focus();
+                document.getElementById("popupQuantity").select();
+            } else if (currentMode === "Main" && !editingRow) {
+                document.getElementById("productName").focus();
+                document.getElementById("productName").select();
+            }
+        }
+        if (e.key === "Alt") closePopup();
+        if (e.ctrlKey && e.key === "p") {
+            e.preventDefault();
+            printActiveMode();
+        }
+    });
+
+    document.getElementById("popup").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            let currentInput = document.activeElement.id;
+            if (currentMode === "Calculator") {
+                if (currentInput === "popupQuantity") document.getElementById("popupRate").focus();
+                else if (currentInput === "popupRate") saveItem();
+            } else if (currentMode === "Main") {
+                if (currentInput === "productName") document.getElementById("quantity").focus();
+                else if (currentInput === "quantity") document.getElementById("rate").focus();
+                else if (currentInput === "rate") saveItem();
+            }
+        }
+    });
+
+    function openPopup(row = null) {
+        document.getElementById("calculatorPopup").style.display = currentMode === "Calculator" ? "block" : "none";
+        document.getElementById("mainPopup").style.display = currentMode === "Main" ? "block" : "none";
+        
+        if (currentMode === "Calculator") {
+            if (row) {
+                document.getElementById('popupQuantity').value = row.cells[1].textContent;
+                document.getElementById('popupRate').value = row.cells[2].textContent.replace('₹', '');
+                editingRow = row;
+            } else {
+                document.getElementById('popupQuantity').value = '';
+                document.getElementById('popupRate').value = '';
+                editingRow = null;
+            }
+        } else {
+            if (row) {
+                document.getElementById("productName").value = row.cells[1].textContent;
+                document.getElementById("quantity").value = row.cells[2].textContent;
+                document.getElementById("rate").value = row.cells[3].textContent;
+                editingRow = row;
+            } else {
+                document.getElementById("productName").value = "";
+                document.getElementById("quantity").value = "";
+                document.getElementById("rate").value = "";
+                editingRow = null;
+            }
+        }
+        document.getElementById('popup').style.display = 'block';
+    }
+
+    function closePopup() {
+        document.getElementById('popup').style.display = 'none';
+    }
+
+    function saveItem() {
+        if (currentMode === "Calculator") {
+            let quantity = parseInt(document.getElementById('popupQuantity').value) || 0;
+            let rate = parseFloat(document.getElementById('popupRate').value) || 0;
+            if (quantity <= 0 || rate <= 0) {
+                alert('Please enter valid details');
+                return;
+            }
+            let total = quantity * rate;
+            if (editingRow) {
+                let oldTotal = parseFloat(editingRow.cells[3].textContent.replace('₹', ''));
+                grandTotal += total - oldTotal;
+                editingRow.cells[1].textContent = quantity;
+                editingRow.cells[2].textContent = `₹${rate.toFixed(2)}`;
+                editingRow.cells[3].textContent = `₹${total.toFixed(2)}`;
+            } else {
+                grandTotal += total;
+                itemCount++;
+                document.getElementById('billItems').innerHTML += `
+                    <tr>
+                        <td>${itemCount}</td>
+                        <td>${quantity}</td>
+                        <td>₹${rate.toFixed(2)}</td>
+                        <td>₹${total.toFixed(2)}</td>
+                        <td class="action-column">
+                            <span class="edit-btn" onclick="editItem(this)">Edit</span>
+                            <span class="remove-btn" onclick="deleteItem(this)">X</span>
+                        </td>
+                    </tr>`;
+            }
+            document.getElementById('grandTotal').textContent = grandTotal.toFixed(2);
+            updateQRCode();
+        } else {
+            let productName = document.getElementById("productName").value || "N/A";
+            let quantity = parseFloat(document.getElementById("quantity").value) || 1;
+            let rate = parseFloat(document.getElementById("rate").value) || 0;
+            if (quantity <= 0 || rate < 0) {
+                alert("Invalid entry! Please enter valid numbers.");
+                return;
+            }
+            let totalPrice = quantity * rate;
+            if (editingRow) {
+                let oldTotal = parseFloat(editingRow.cells[4].textContent);
+                grandTotalMain += totalPrice - oldTotal;
+                editingRow.cells[1].textContent = productName;
+                editingRow.cells[2].textContent = quantity.toFixed(2);
+                editingRow.cells[3].textContent = rate.toFixed(2);
+                editingRow.cells[4].textContent = totalPrice.toFixed(2);
+            } else {
+                grandTotalMain += totalPrice;
+                document.getElementById("billBody").innerHTML += `
+                    <tr>
+                        <td>${document.getElementById("billBody").children.length + 1}</td>
+                        <td>${productName}</td>
+                        <td>${quantity.toFixed(2)}</td>
+                        <td>${rate.toFixed(2)}</td>
+                        <td>${totalPrice.toFixed(2)}</td>
+                        <td class="action-column">
+                            <span class="edit-btn" onclick="editItemMain(this)">Edit</span>
+                            <span class="remove-btn" onclick="removeItemMain(this, ${totalPrice})">X</span>
+                        </td>
+                    </tr>`;
+            }
+            document.getElementById("grandTotalMain").textContent = grandTotalMain.toFixed(2);
+            updateQRCodeMain();
+        }
+        closePopup();
+    }
+
+    function editItem(button) {
+        openPopup(button.parentElement.parentElement);
+    }
+
+    function deleteItem(button) {
+        let row = button.parentElement.parentElement;
+        grandTotal -= parseFloat(row.cells[3].textContent.replace('₹', ''));
+        document.getElementById('grandTotal').textContent = grandTotal.toFixed(2);
+        row.remove();
+        updateQRCode();
+    }
+
+    function calculateBalance() {
+        let cashReceived = parseFloat(document.getElementById('cashReceived').value) || 0;
+        let balance = cashReceived - grandTotal;
+        document.getElementById('balance').textContent = balance >= 0 ? balance.toFixed(2) : "0.00";
+        updateQRCode();
+    }
+
+    function updateQRCode() {
+        let balance = parseFloat(document.getElementById('balance').textContent) || 0;
+        let qrAmount = balance < 0 ? Math.abs(balance) : grandTotal;
+        document.getElementById('qrcode').innerHTML = "";
+        new QRCode(document.getElementById('qrcode'), { 
+            text: `upi://pay?pa=6363304520@okbizaxis&pn=Annapurna Stores&am=${qrAmount.toFixed(2)}&cu=INR`, 
+            width: 100, 
+            height: 100 
+        });
+    }
+
+    function printBill() {
+        printActiveMode();
+    }
+
+    function saveBill() {
+        const billData = {
+            items: Array.from(document.querySelectorAll("#billItems tr")).map(row => ({
+                quantity: row.cells[1].textContent,
+                rate: row.cells[2].textContent.replace('₹', ''),
+                total: row.cells[3].textContent.replace('₹', '')
+            })),
+            grandTotal: document.getElementById('grandTotal').textContent,
+            cashReceived: document.getElementById('cashReceived').value,
+            balance: document.getElementById('balance').textContent
+        };
+        localStorage.setItem('savedBill', JSON.stringify(billData));
+        alert('Bill saved successfully!');
+    }
+
+    function loadBill() {
+        const savedBill = JSON.parse(localStorage.getItem('savedBill'));
+        if (!savedBill) {
+            alert('No saved bill found!');
+            return;
+        }
+        document.getElementById('billItems').innerHTML = savedBill.items.map((item, index) => `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${item.quantity}</td>
+                <td>₹${item.rate}</td>
+                <td>₹${item.total}</td>
+                <td class="action-column">
+                    <span class="edit-btn" onclick="editItem(this)">Edit</span>
+                    <span class="remove-btn" onclick="deleteItem(this)">X</span>
+                </td>
+            </tr>`).join('');
+        document.getElementById('grandTotal').textContent = savedBill.grandTotal;
+        document.getElementById('cashReceived').value = savedBill.cashReceived;
+        document.getElementById('balance').textContent = savedBill.balance;
+        grandTotal = parseFloat(savedBill.grandTotal);
+        itemCount = savedBill.items.length;
+        updateQRCode();
+        alert('Bill loaded successfully!');
+    }
+
+    function clearSavedBill() {
+        localStorage.removeItem('savedBill');
+        alert('Saved bill cleared!');
+    }
+
+    function editItemMain(button) {
+        openPopup(button.parentElement.parentElement);
+    }
+
+    function removeItemMain(element, price) {
+        element.parentElement.parentElement.remove();
+        grandTotalMain -= price;
+        document.getElementById("grandTotalMain").textContent = grandTotalMain.toFixed(2);
+        updateQRCodeMain();
+    }
+
+    function resetBillMain() {
+        if (confirm("Are you sure you want to reset the bill?")) {
+            document.getElementById("billBody").innerHTML = "";
+            document.getElementById("grandTotalMain").textContent = "0.00";
+            document.getElementById("cashReceivedMain").value = "";
+            document.getElementById("balanceMain").textContent = "0.00";
+            grandTotalMain = 0;
+            updateQRCodeMain();
+        }
+    }
+
+    function calculateBalanceMain() {
+        let cashReceived = parseFloat(document.getElementById("cashReceivedMain").value) || 0;
+        let balance = cashReceived - grandTotalMain;
+        document.getElementById("balanceMain").textContent = balance.toFixed(2);
+        updateQRCodeMain();
+    }
+
+    function updateQRCodeMain() {
+        let balance = parseFloat(document.getElementById("balanceMain").textContent) || 0;
+        let qrAmount = balance < 0 ? Math.abs(balance) : grandTotalMain;
+        document.getElementById("qrcodeMain").innerHTML = "";
+        new QRCode(document.getElementById("qrcodeMain"), { 
+            text: `upi://pay?pa=6363304520@okbizaxis&pn=StoreName&am=${qrAmount.toFixed(2)}&cu=INR`, 
+            width: 100, 
+            height: 100 
+        });
+    }
+
+    function printReceiptMain() {
+        printActiveMode();
+    }
+
+    function printActiveMode() {
+        const bill = document.getElementById('bill');
+        const receipt = document.getElementById('receipt-content');
+        
+        // Remove any existing print-active classes
+        bill.classList.remove('print-active');
+        receipt.classList.remove('print-active');
+        
+        // Add print-active class to the current mode's content
+        if (currentMode === 'Calculator') {
+            bill.classList.add('print-active');
+        } else {
+            receipt.classList.add('print-active');
+        }
+        
+        window.print();
+        
+        // Clean up after printing
+        setTimeout(() => {
+            bill.classList.remove('print-active');
+            receipt.classList.remove('print-active');
+        }, 100);
+    }
+
+    function saveBillAsImageMain() {
+        html2canvas(document.getElementById("receipt-content"), { scale: 2 }).then(canvas => {
+            let link = document.createElement("a");
+            link.download = `Bill_${new Date().toISOString().slice(0, 10)}.png`;
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+        });
+    }
+
+    function shareBillMain() {
+        html2canvas(document.getElementById("receipt-content"), { scale: 2 }).then(canvas => {
+            canvas.toBlob((blob) => {
+                const file = new File([blob], `Bill_${new Date().toISOString().slice(0, 10)}.png`, { type: "image/png" });
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    navigator.share({
+                        files: [file],
+                        title: "Bill Receipt",
+                        text: "Here is the bill receipt.",
+                    }).then(() => console.log("Bill shared successfully!"))
+                      .catch((error) => console.error("Error sharing bill:", error));
+                } else {
+                    alert("Sharing not supported in this browser.");
+                }
+            });
+        });
+    }
+
+    function saveBillMain() {
+        const billData = {
+            items: Array.from(document.querySelectorAll("#billBody tr")).map(row => ({
+                productName: row.cells[1].textContent,
+                quantity: row.cells[2].textContent,
+                rate: row.cells[3].textContent,
+                total: row.cells[4].textContent
+            })),
+            grandTotal: document.getElementById('grandTotalMain').textContent,
+            cashReceived: document.getElementById('cashReceivedMain').value,
+            balance: document.getElementById('balanceMain').textContent,
+            customerName: document.getElementById('customerName').value
+        };
+        localStorage.setItem('savedBillMain', JSON.stringify(billData));
+        alert('Bill saved successfully!');
+    }
+
+    function loadBillMain() {
+        const savedBill = JSON.parse(localStorage.getItem('savedBillMain'));
+        if (!savedBill) {
+            alert('No saved bill found!');
+            return;
+        }
+        document.getElementById('billBody').innerHTML = savedBill.items.map((item, index) => `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${item.productName}</td>
+                <td>${item.quantity}</td>
+                <td>${item.rate}</td>
+                <td>${item.total}</td>
+                <td class="action-column">
+                    <span class="edit-btn" onclick="editItemMain(this)">Edit</span>
+                    <span class="remove-btn" onclick="removeItemMain(this, ${item.total})">X</span>
+                </td>
+            </tr>`).join('');
+        document.getElementById('grandTotalMain').textContent = savedBill.grandTotal;
+        document.getElementById('cashReceivedMain').value = savedBill.cashReceived;
+        document.getElementById('balanceMain').textContent = savedBill.balance;
+        document.getElementById('customerName').value = savedBill.customerName || '';
+        grandTotalMain = parseFloat(savedBill.grandTotal);
+        updateQRCodeMain();
+        alert('Bill loaded successfully!');
+    }
+
+    function clearSavedBillMain() {
+        localStorage.removeItem('savedBillMain');
+        alert('Saved bill cleared!');
+    }
+
+    openTab('Calculator');
+    updateQRCode();
+    updateQRCodeMain();
+</script>
+</body>
+</html>
